@@ -6,9 +6,7 @@ plugins {
 group = "org.example"
 version = "1.0-SNAPSHOT"
 
-repositories {
-    mavenCentral()
-}
+repositories { mavenCentral() }
 
 dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test")
@@ -17,14 +15,8 @@ dependencies {
     implementation("io.ktor:ktor-server-html-builder:2.3.7")
 }
 
-application {
-    mainClass.set("org.example.MainKt")
-}
+application { mainClass = "org.example.MainKt" }
 
-tasks.test {
-    useJUnitPlatform()
-}
+tasks.test { useJUnitPlatform() }
 
-kotlin {
-    jvmToolchain(21)
-}
+kotlin { jvmToolchain(21) }

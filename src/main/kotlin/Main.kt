@@ -1,45 +1,34 @@
 package org.example
 
-//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
-// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
-
-import io.ktor.http.*
-import io.ktor.server.application.*
-import io.ktor.server.engine.*
-import io.ktor.server.html.*
-import io.ktor.server.http.content.*
-import io.ktor.server.netty.*
-import io.ktor.server.routing.*
+import com.typesafe.config.ConfigFactory
+import io.ktor.http.HttpStatusCode
+import io.ktor.server.application.call
+import io.ktor.server.config.HoconApplicationConfig
+import io.ktor.server.engine.embeddedServer
+import io.ktor.server.html.respondHtml
+import io.ktor.server.http.content.staticResources
+import io.ktor.server.netty.Netty
+import io.ktor.server.routing.get
+import io.ktor.server.routing.routing
+import java.io.File
 import kotlinx.html.body
 import kotlinx.html.h1
-import kotlinx.html.ul
-import kotlinx.html.li
 import kotlinx.html.head
+import kotlinx.html.li
 import kotlinx.html.title
-import java.io.File
+import kotlinx.html.ul
 
 fun main() {
-    embeddedServer(Netty, port = 8000) {
+    val config = HoconApplicationConfig(ConfigFactory.load())
+    embeddedServer(Netty, port = readServerPort(config)) {
         routing {
-            static {
-                resource("static")
-            }
+            staticResources("static", "resources")
             get("/") {
-                val name = "Ktor"
-                val gitLog = getGitLog()
                 call.respondHtml(HttpStatusCode.OK) {
-                    head {
-                        title {
-                            +name
-                        }
-                    }
+                    head { title { +"Git Log" } }
                     body {
                         h1 { +"Git Repository Log" }
-                        ul {
-                            gitLog.forEach {
-                                li { +it }
-                            }
-                        }
+                        ul { readGitLog(config).forEach { li { +it } } }
                     }
                 }
             }
@@ -47,8 +36,19 @@ fun main() {
     }.start(wait = true)
 }
 
-fun getGitLog(): List<String> {
-    val process = ProcessBuilder("git", "log", "--pretty=format:%h %s").directory(File("/home/arnor/IdeaProjects/gitlog/gitlog")).start()
-    val reader = process.inputStream.bufferedReader()
-    return reader.readLines()
+fun readServerPort(config: HoconApplicationConfig): Int {
+    return try {
+        config.property("server.port").getString().toIntOrNull() ?: 8080
+    } catch (e: io.ktor.server.config.ApplicationConfigurationException) {
+        println("Warning: server.port not found or invalid, using default port 8080.")
+        8080
+    }
+}
+
+fun readGitLog(config: HoconApplicationConfig): List<String> {
+    return ProcessBuilder("git", "log", "--pretty=format:%h %s").directory(
+        File(
+            config.property("git.repo.path").getString()
+        )
+    ).start().inputStream.bufferedReader().readLines()
 }
